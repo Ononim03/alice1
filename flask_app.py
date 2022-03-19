@@ -56,12 +56,12 @@ def main():
     handle_dialog(request.json, response)
 
     logging.info(f'Response:  {response!r}')
-
+    handle_dialog(request.json, response, word='кролика')
     # Преобразовываем в JSON и возвращаем
     return json.dumps(response)
 
 
-def handle_dialog(req, res):
+def handle_dialog(req, res, word='слона'):
     user_id = req['session']['user_id']
 
     if req['session']['new']:
@@ -77,7 +77,7 @@ def handle_dialog(req, res):
             ]
         }
         # Заполняем текст ответа
-        res['response']['text'] = 'Привет! Купи слона!'
+        res['response']['text'] = f'Привет! Купи {word}!'
         # Получим подсказки
         res['response']['buttons'] = get_suggests(user_id)
         return
@@ -99,13 +99,13 @@ def handle_dialog(req, res):
         'я куплю'
     ]:
         # Пользователь согласился, прощаемся.
-        res['response']['text'] = 'Слона можно найти на Яндекс.Маркете!'
+        res['response']['text'] = f'{word.capitalize()} можно найти на Яндекс.Маркете!'
         res['response']['end_session'] = True
         return
 
     # Если нет, то убеждаем его купить слона!
     res['response']['text'] = \
-        f"Все говорят '{req['request']['original_utterance']}', а ты купи слона!"
+        f"Все говорят '{req['request']['original_utterance']}', а ты купи {word}!"
     res['response']['buttons'] = get_suggests(user_id)
 
 
