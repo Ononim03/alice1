@@ -1,3 +1,4 @@
+from pprint import pprint
 from requests import post
 
 raw = {
@@ -43,4 +44,4 @@ raw = {
     "version": "1.0"
 }
 
-print(post('http://127.0.0.1:5000/post', json=raw).json())
+pprint(post('https://alice228.herokuapp.com/post', json=raw).json())
