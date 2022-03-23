@@ -1,1 +1,1 @@
-web: python alice2-game.py
+web: python alice-2-game.py
