@@ -1,3 +1,6 @@
+import os
+
+import waitress
 from flask import Flask, request
 import logging
 import json
@@ -14,10 +17,10 @@ logging.basicConfig(level=logging.INFO)
 cities = {
     'москва': ['1521359/780421cc36e135f72aac',
                '213044/97770ad5bb761cabbdcf'],
-    'нью-йорк': ['965417/2d0720b47944c9c0c7b9',
-                 '1540737/26127cdccf5f404e56d2'],
-    'париж': ["1540737/c62f98126bbf83a6fdf3",
-              '1533899/eb0e098ca95bf81a03b7']
+    'нью-йорк': ['1540737/26127cdccf5f404e56d2',
+                 '965417/2d0720b47944c9c0c7b9'],
+    'париж': ["1533899/eb0e098ca95bf81a03b7",
+              '1540737/c62f98126bbf83a6fdf3']
 }
 
 # создаем словарь, где для каждого пользователя
@@ -120,4 +123,5 @@ def get_first_name(req):
 
 
 if __name__ == '__main__':
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    waitress.serve(app, host='0.0.0.0', port=port)
