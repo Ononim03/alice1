@@ -1,11 +1,11 @@
 # импортируем библиотеки
-import os
-
-from flask import Flask, request
-import logging
-import waitress
 # библиотека, которая нам понадобится для работы с JSON
 import json
+import logging
+import os
+
+import waitress
+from flask import Flask, request
 
 # создаём приложение
 # мы передаём __name__, в нем содержится информация,
@@ -27,9 +27,10 @@ logging.basicConfig(level=logging.INFO)
 # то мы сохраним в этот словарь запись формата
 # sessionStorage[user_id] = {'suggests': ["Не хочу.", "Не буду.", "Отстань!" ]}
 # Такая запись говорит, что мы показали пользователю эти три подсказки.
-# Когда он откажется купить слона,
+# Когда он откажется купить {word},
 # то мы уберем одну подсказку. Как будто что-то меняется :)
 sessionStorage = {}
+is_elephant = True
 
 
 @app.route('/post', methods=['POST'])
@@ -37,7 +38,8 @@ sessionStorage = {}
 # Внутри функции доступен request.json - это JSON,
 # который отправила нам Алиса в запросе POST
 def main():
-    logging.info(f'Request {request.json!r}')
+    global is_elephant
+    logging.info(f'Request: {request.json!r}')
 
     # Начинаем формировать ответ, согласно документации
     # мы собираем словарь, который потом при помощи
@@ -53,15 +55,23 @@ def main():
     # Отправляем request.json и response в функцию handle_dialog.
     # Она сформирует оставшиеся поля JSON, которые отвечают
     # непосредственно за ведение диалога
-    handle_dialog(request.json, response)
+    handle_dialog(request.json, response, 'слона' if is_elephant else 'кролика')
 
     logging.info(f'Response:  {response!r}')
-    handle_dialog(request.json, response, word='кролика')
+
+    if is_elephant and response['response']['end_session']:
+        response['response']['end_session'] = False
+        is_elephant = False
+
+    if response['response']['end_session']:
+        is_elephant = True
+
     # Преобразовываем в JSON и возвращаем
     return json.dumps(response)
 
 
-def handle_dialog(req, res, word='слона'):
+def handle_dialog(req, res, word):
+    global is_elephant
     user_id = req['session']['user_id']
 
     if req['session']['new']:
@@ -79,7 +89,7 @@ def handle_dialog(req, res, word='слона'):
         # Заполняем текст ответа
         res['response']['text'] = f'Привет! Купи {word}!'
         # Получим подсказки
-        res['response']['buttons'] = get_suggests(user_id)
+        res['response']['buttons'] = get_suggests(user_id, word[:-1])
         return
 
     # Сюда дойдем только, если пользователь не новый,
@@ -94,23 +104,34 @@ def handle_dialog(req, res, word='слона'):
         'ладно',
         'куплю',
         'покупаю',
-        'хорошо',
+        'хорошо'
         'я покупаю',
         'я куплю'
     ]:
         # Пользователь согласился, прощаемся.
-        res['response']['text'] = f'{word.capitalize()} можно найти на Яндекс.Маркете!'
-        res['response']['end_session'] = True
+        res['response']['text'] = f'{word} можно найти на Яндекс.Маркете!'
+        if word == 'кролика':
+            res['response']['end_session'] = True
+        else:
+            is_elephant = False
+            res['response']['text'] += ' Купи кролика!'
+            sessionStorage[user_id] = {
+                'suggests': [
+                    "Не хочу.",
+                    "Не буду.",
+                    "Отстань!",
+                ]
+            }
+            res['response']['buttons'] = get_suggests(user_id, word[:-1])
         return
-
-    # Если нет, то убеждаем его купить слона!
+        # Если нет, то убеждаем его купить {word}!
     res['response']['text'] = \
-        f"Все говорят '{req['request']['original_utterance']}', а ты купи {word}!"
-    res['response']['buttons'] = get_suggests(user_id)
+        f"Все говорят {req['request']['original_utterance']}, а ты купи {word}!"
+    res['response']['buttons'] = get_suggests(user_id, word[:-1])
 
 
 # Функция возвращает две подсказки для ответа.
-def get_suggests(user_id):
+def get_suggests(user_id, word):
     session = sessionStorage[user_id]
 
     # Выбираем две первые подсказки из массива.
@@ -128,7 +149,7 @@ def get_suggests(user_id):
     if len(suggests) < 2:
         suggests.append({
             "title": "Ладно",
-            "url": "https://market.yandex.ru/search?text=слон",
+            "url": f"https://market.yandex.ru/search?text={word}",
             "hide": True
         })
 
@@ -136,5 +157,5 @@ def get_suggests(user_id):
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get("PORT", 5000))
     waitress.serve(app, host='0.0.0.0', port=port)
